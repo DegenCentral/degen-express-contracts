@@ -109,7 +109,10 @@ contract Core is Diamondable {
 			eth -= initialBuy;
 		}
 
-		if (eth > 0) payable(creator).transfer(eth); // refund dust
+		if (eth > 0) {
+			(bool sent,) = creator.call{ value: eth }(""); // refund dust
+			require(sent);
+		}
 
 		return tokenAddress;
 	}
@@ -175,22 +178,22 @@ contract Core is Diamondable {
 		Degen(address(this)).attributeXp(seller, Degen.XpType.Sell, ethOut);
 
 		Token(token).transferFrom(seller, address(this), amount); // Transfer tokens from seller
-		payable(seller).transfer(ethOut); // Transfer eth to seller
+		(bool sent,) = seller.call{ value: ethOut }(""); require(sent); // Transfer eth to seller
 		emit Sold(seller, token, ethOut, amount, price);
 	}
 
 	function launch(address token) public onlyDiamond {
-		LibTokens.TokenInfo storage tokenInfo = LibTokens.store().tokens[token];
-		require(tokenInfo.creator != address(0), "invalid token");
+		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
+		require(info.creator != address(0), "invalid token");
 
 		Token(token).unlock();
 
-		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, tokenInfo);
+		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, info);
 
-		Degen(address(this)).attributeXp(tokenInfo.creator, Degen.XpType.Launch, eth);
+		Degen(address(this)).attributeXp(info.creator, Degen.XpType.Launch, eth);
 
-		tokenInfo.pair = pair;
-		emit TokenLaunched(token, tokenInfo.creator, tokenInfo.strategy, tokenInfo.dex, pair);
+		info.pair = pair;
+		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
 	}
 
 }
