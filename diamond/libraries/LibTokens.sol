@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
+
+import { LibDex } from "./LibDex.sol";
 
 library LibTokens {
 	bytes32 constant STORAGE_POSITION = keccak256("diamond.tokens.storage");
 
-	struct TeamAllocation {
-		uint16 percentage;
-		uint8 beneficiary;
+	enum LaunchStrategy {
+		FakeLiquidity
 	}
 
-	enum LpStrategy {
-		Burn,
-		Vest
+	struct TokenInfo {
+		address creator;
+		LaunchStrategy strategy;
+		LibDex.Dex dex;
+		address pair;
 	}
 
 	struct Storage {
-		mapping(address => TeamAllocation) _unused_teamAllocMap;
-		mapping(address => address) creatorMap;
-		mapping(address => LpStrategy) lpStrategyMap;
+		mapping(address => TokenInfo) tokens;
 	}
 
 	function store() internal pure returns (Storage storage s) {
 		bytes32 position = STORAGE_POSITION;
-		assembly {
-			s.slot := position
-		}
+		assembly { s.slot := position }
 	}
+
 }

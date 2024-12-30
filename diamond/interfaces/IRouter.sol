@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 interface IRouter {
 	function WETH() external view returns (address);
 
-  function swapEthForTokens(address token) external payable;
-	function swapTokensForEth(address token, uint256 amount) external;
+	function quote(address input, address output, uint256 amount) external returns (uint256);
 
+  function swapEthForTokens(address token, uint256 amountOutMin, uint256 deadline) external payable;
+	function swapTokensForEth(address token, uint256 amountIn, uint256 amountOutMin, uint256 deadline) external;
 }

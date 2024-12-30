@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { DiamondInit } from "./DiamondInit.sol";
-import { LibDegen } from "../libraries/LibDegen.sol";
+import { LibCore } from "../libraries/LibCore.sol";
+import { LibFakePools } from "../libraries/LibFakePools.sol";
+
 
 contract DegenInit is DiamondInit {
 	function init() public override {
 		super.init();
 
-		LibDegen.Storage storage s = LibDegen.store();
+		LibCore.Storage storage s = LibCore.store();
 
-		s.creationPrice = 1; // usd
+		s.creationPrice = 1 ether; // usd
 
-		s.txFee = 10;
-		s.launchFee = 20;
+		s.tradeFee = 20;
 
 		s.tokenSupply = 1_000_000_000 ether;
 
-		// FAKE POOL
-		s.fakePoolMCapThreshold = 75_000; // usd
-		s.fakePoolBaseEther = 1.56 ether;
+		
+		LibFakePools.Storage storage fp = LibFakePools.store();
+
+		fp.usdMcapThreshold = 75_000 ether; // usd
+		fp.fakeEth = 5000 ether;
 	}
 }
