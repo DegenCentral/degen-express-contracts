@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: UNKNOWN
+pragma solidity 0.8.20;
+
+// Contracts/Libraries/Modifiers
+import { Diamondable } from "../../../Diamondable.sol";
+import { LibLp } from "../../../libraries/LibLp.sol";
+
+// Third Party
+import { INonfungiblePositionManager } from "ramses-v3/contracts/CL/periphery/interfaces/INonfungiblePositionManager.sol";
+import { LiquidityAmounts } from "ramses-v3/contracts/CL/periphery/libraries/LiquidityAmounts.sol";
+import { IRamsesV3Factory } from "ramses-v3/contracts/CL/core/interfaces/IRamsesV3Factory.sol";
+import { IRamsesV3Pool } from "ramses-v3/contracts/CL/core/interfaces/IRamsesV3Pool.sol";
+import { TickMath } from "ramses-v3/contracts/CL/core/libraries/TickMath.sol";
+import { FixedPointMathLib as FPML } from "solady/src/utils/FixedPointMathLib.sol";
+
+// Interfaces
+import { Token } from "../../../../Token.sol";
+
+
+contract Shadow is Diamondable {
+
+	IRamsesV3Factory constant factory = IRamsesV3Factory(0xcD2d0637c94fe77C2896BbCBB174cefFb08DE6d7);
+	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
+
+	int24 internal spacing = 50;
+
+	function shadow_pairFor(address token) public view returns (address) {
+		return factory.getPool(token, nfpManager.WETH9(), spacing);
+	}
+
+	function shadow_addLiquidty(
+		address token,
+		uint256 ethAmount,
+		uint256 tokenAmount
+	) public onlyDiamond {
+		address weth = nfpManager.WETH9();
+
+		(address token0, address token1) = weth < token
+			? (weth, token)
+			: (token, weth);
+		(uint256 amount0, uint256 amount1) = weth < token
+			? (ethAmount, tokenAmount)
+			: (tokenAmount, ethAmount);
+
+		address pool = shadow_pairFor(token);
+		if (pool == address(0)) {
+			pool = factory.createPool(
+				token0,
+				token1,
+				spacing,
+				calculateSqrtPriceX96(amount0, amount1)
+			);
+		}
+
+		Token(token0).approve(address(nfpManager), amount0);
+		Token(token1).approve(address(nfpManager), amount1);
+
+		INonfungiblePositionManager.MintParams
+			memory params = INonfungiblePositionManager.MintParams({
+				token0: token0,
+				token1: token1,
+				tickSpacing: spacing,
+				tickLower: (-887272 / spacing) * spacing,
+				tickUpper: (887272 / spacing) * spacing,
+				amount0Desired: amount0,
+				amount1Desired: amount1,
+				amount0Min: 0,
+				amount1Min: 0,
+				recipient: address(this),
+				deadline: block.timestamp
+			});
+
+		(uint256 tokenId,,,) = nfpManager.mint(params);
+
+		LibLp.store().shadow_cl_positions[token] = tokenId;
+	}
+
+	function shadow_decreaseLiquidity(address token, uint256 ethAmount) public onlyDiamond {
+		uint256 tokenId = LibLp.store().shadow_cl_positions[token];
+		require(tokenId > 0, "no position");
+
+		address weth = nfpManager.WETH9();
+
+		(address token0,,,int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) = nfpManager.positions(tokenId);
+		(uint160 sqrtPriceX96,,,,,,) = IRamsesV3Pool(shadow_pairFor(token)).slot0();
+
+		(uint256 liq0, uint256 liq1) = LiquidityAmounts.getAmountsForLiquidity(
+			sqrtPriceX96,
+			TickMath.getSqrtRatioAtTick(tickLower),
+			TickMath.getSqrtRatioAtTick(tickUpper),
+			liquidity
+		);
+
+		uint256 liqWeth = token0 == weth ? liq0 : liq1;
+
+		uint256 liqToRemove = FPML.mulDivUp(uint256(liquidity), ethAmount, liqWeth);
+
+		nfpManager.decreaseLiquidity(INonfungiblePositionManager.DecreaseLiquidityParams({
+			tokenId: tokenId,
+			liquidity: uint128(liqToRemove),
+			amount0Min: 0,
+			amount1Min: 0,
+			deadline: block.timestamp
+		}));
+
+		nfpManager.collect(
+			INonfungiblePositionManager.CollectParams({
+				tokenId: tokenId,
+				recipient: address(this),
+				amount0Max: type(uint128).max,
+				amount1Max: type(uint128).max
+			})
+		);
+	}
+
+
+	uint256 internal constant Q96 = 0x1000000000000000000000000;
+
+	function calculateSqrtPriceX96(uint256 amount0, uint256 amount1) internal pure returns (uint160) {
+		return uint160(FPML.mulDiv(FPML.sqrt(amount1), Q96, FPML.sqrt(amount0)));
+	}
+
+}

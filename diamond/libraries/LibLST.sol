@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 library LibLST {
-	bytes32 constant STORAGE_POSITION = keccak256("diamond.lst.storage");
-
 	struct Storage {
 		uint256 staked;
 	}
 
 	function store() internal pure returns (Storage storage s) {
-		bytes32 position = STORAGE_POSITION;
+		bytes32 position = keccak256("diamond.lst.storage");
 		assembly { s.slot := position }
 	}
 

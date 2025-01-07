@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { Diamondable } from "../../../Diamondable.sol";
+import { LibLp } from "../../../libraries/LibLp.sol";
 
 // Libraries
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
@@ -42,16 +43,7 @@ interface IEqualV3Router {
 	) external returns (uint amountToken, uint amountETH);
 }
 
-contract EqualizerLpHandler is Diamondable {
-	struct Storage {
-		mapping (address => address) positions;
-	}
-
-	function store() internal pure returns (Storage storage s) {
-		bytes32 position = keccak256("diamond.equallp.storage");
-		assembly { s.slot := position }
-	}
-
+contract Equalizer is Diamondable {
 
 	IEqualV3Router constant router = IEqualV3Router(0xcC6169aA1E879d3a4227536671F85afdb2d23fAD);
 
@@ -76,16 +68,17 @@ contract EqualizerLpHandler is Diamondable {
 			block.timestamp
 		);
 
-		store().positions[token] = equal_pairFor(token);
+		LibLp.store().equal_amm_positions[token] = equal_pairFor(token);
 	}
 
-	function equal_decreaseLiquidity(address token, uint256 amount) public onlyDiamond {
-		address pair = store().positions[token];
+	function equal_decreaseLiquidity(address token, uint256 ethAmount) public onlyDiamond {
+		address pair = LibLp.store().equal_amm_positions[token];
+		require(pair != address(0), "no position found");
 		
 		(uint reserve0, uint reserve1,) = IEqualV2Pair(pair).getReserves();
 		(uint reserveETH,) = token < router.weth() ? (reserve1, reserve0) : (reserve0, reserve1);
 
-		uint256 lpTokensToBurn = FixedPointMathLib.mulDivUp(amount, IEqualV2Pair(pair).totalSupply(), reserveETH);
+		uint256 lpTokensToBurn = FixedPointMathLib.mulDivUp(ethAmount, IEqualV2Pair(pair).totalSupply(), reserveETH);
 
 		Token(pair).approve(address(router), lpTokensToBurn);
 
@@ -94,7 +87,7 @@ contract EqualizerLpHandler is Diamondable {
 			false,
 			lpTokensToBurn,
 			0,
-			amount,
+			ethAmount,
 			address(this),
 			block.timestamp
 		);

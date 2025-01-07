@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 import { IChainlinkAggregatorV3 } from "./diamond/interfaces/IChainlinkAggregatorV3.sol";
 import { LibPRNG } from "solady/src/utils/LibPRNG.sol";

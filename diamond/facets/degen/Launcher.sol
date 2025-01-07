@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { LibDex } from "../../libraries/LibDex.sol";

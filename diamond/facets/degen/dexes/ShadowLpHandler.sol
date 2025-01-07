@@ -1,132 +1,98 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { Diamondable } from "../../../Diamondable.sol";
+import { LibLp } from "../../../libraries/LibLp.sol";
 
-// Libraries
-import { FixedPointMathLib as FPML } from "solady/src/utils/FixedPointMathLib.sol";
+// Third Party
+import { INonfungiblePositionManager } from "ramses-v3/contracts/CL/periphery/interfaces/INonfungiblePositionManager.sol";
 
 // Interfaces
 import { Token } from "../../../../Token.sol";
 
 
-// https://github.com/code-423n4/2024-10-ramses-exchange/blob/main/contracts/CL/core/RamsesV3Factory.sol
-interface IShadowFactory {
-	function getPool(
-		address tokenA,
-		address tokenB,
-		int24 tickSpacing
-	) external view returns (address pool);
-
-	function createPool(
-		address tokenA,
-		address tokenB,
-		int24 tickSpacing,
-		uint160 sqrtPriceX96
-	) external returns (address pool);
-}
-
-// https://github.com/code-423n4/2024-10-ramses-exchange/blob/main/contracts/CL/periphery/NonfungiblePositionManager.sol
-interface IShadowNonfungiblePositionManager {
-	function WETH9() external view returns (address);
-
-	struct MintParams {
-		address token0;
-		address token1;
-		int24 tickSpacing;
-		int24 tickLower;
-		int24 tickUpper;
-		uint256 amount0Desired;
-		uint256 amount1Desired;
-		uint256 amount0Min;
-		uint256 amount1Min;
-		address recipient;
-		uint256 deadline;
-	}
-
-	function mint(
-		MintParams calldata params
-  ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
+interface IShadowLiquidityClaimer {
+	function shadow_liquidity_received(address token0, address token1, uint256 amount0, uint256 amount1, uint256 liquidity) external;
 }
 
 contract ShadowLpHandler is Diamondable {
 	struct Storage {
-		mapping (address => uint256) positions;
+		uint128 liqToClaim;
+		mapping(uint256 => uint128) ogLiq;
+		mapping(address => mapping(address => uint8)) claimed;
 	}
 
 	function store() internal pure returns (Storage storage s) {
-		bytes32 position = keccak256("diamond.shadowlp.storage");
+		bytes32 position = keccak256("diamond.shadowlphandler.storage");
 		assembly { s.slot := position }
 	}
 
+	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
 
-	IShadowFactory constant factory = IShadowFactory(0xcD2d0637c94fe77C2896BbCBB174cefFb08DE6d7);
-	IShadowNonfungiblePositionManager constant nfpManager = IShadowNonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
-
-	int24 internal spacing = 50;
-
-	function shadow_pairFor(address token) public view returns (address) {
-		return factory.getPool(token, nfpManager.WETH9(), spacing);
-	}
-
-	function shadow_addLiquidty(
-		address token,
-		uint256 ethAmount,
-		uint256 tokenAmount
-	) public onlyDiamond {
-		address weth = nfpManager.WETH9();
-
-		(address token0, address token1) = weth < token
-			? (weth, token)
-			: (token, weth);
-		(uint256 amount0, uint256 amount1) = weth < token
-			? (ethAmount, tokenAmount)
-			: (tokenAmount, ethAmount);
-
-		address pool = shadow_pairFor(token);
-		if (pool == address(0)) {
-			pool = factory.createPool(
-				token0,
-				token1,
-				spacing,
-				calculateSqrtPriceX96(amount0, amount1)
-			);
+	function shadowlp_claim(address token) external {
+		uint8 maxClaim;
+		if (msg.sender == address(0)) {
+			// TODO
+		} else {
+			revert("not whitelisted");
 		}
 
-		Token(token0).approve(address(nfpManager), amount0);
-		Token(token1).approve(address(nfpManager), amount1);
+		Storage storage s = store();
+		uint8 claimed = s.claimed[msg.sender][token];
+		require(claimed < maxClaim, "max claimed");
+		uint256 tokenId = LibLp.store().shadow_cl_positions[token];
+		require(tokenId > 0, "no position");
 
-		IShadowNonfungiblePositionManager.MintParams
-			memory params = IShadowNonfungiblePositionManager.MintParams({
-				token0: token0,
-				token1: token1,
-				tickSpacing: spacing,
-				tickLower: (-887272 / spacing) * spacing,
-				tickUpper: (887272 / spacing) * spacing,
-				amount0Desired: amount0,
-				amount1Desired: amount1,
-				amount0Min: 0,
-				amount1Min: 0,
+		(address token0, address token1,,,, uint128 liquidity,,,,) = nfpManager.positions(tokenId);
+
+		if (store().ogLiq[tokenId] == 0) {
+			store().ogLiq[tokenId] = liquidity;
+		} else {
+			liquidity = store().ogLiq[tokenId];
+		}
+
+		uint8 leftToClaim = maxClaim - s.claimed[msg.sender][token];
+		uint128 liqToRemove = (liquidity / 100) * leftToClaim;
+		s.claimed[msg.sender][token] += leftToClaim;
+
+		uint256 amount0Before = Token(token0).balanceOf(address(this));
+		uint256 amount1Before = Token(token1).balanceOf(address(this));
+
+		nfpManager.decreaseLiquidity(INonfungiblePositionManager.DecreaseLiquidityParams({
+			tokenId: tokenId,
+			liquidity: uint128(liqToRemove),
+			amount0Min: 0,
+			amount1Min: 0,
+			deadline: block.timestamp
+		}));
+
+		nfpManager.collect(
+			INonfungiblePositionManager.CollectParams({
+				tokenId: tokenId,
 				recipient: address(this),
-				deadline: block.timestamp
-			});
+				amount0Max: type(uint128).max,
+				amount1Max: type(uint128).max
+			})
+		);
 
-		(uint256 tokenId,,,) = nfpManager.mint(params);
+		uint256 amount0 = Token(token0).balanceOf(address(this)) - amount0Before;
+		uint256 amount1 = Token(token1).balanceOf(address(this)) - amount1Before;
 
-		store().positions[token] = tokenId;
+		Token(token0).transfer(msg.sender, amount0);
+		Token(token1).transfer(msg.sender, amount1);
+
+		IShadowLiquidityClaimer(msg.sender).shadow_liquidity_received(token0, token1, amount0, amount1, liqToRemove);
+
+		if (msg.sender == address(0)) {
+			// TODO
+		} else {
+			revert("not whitelisted");
+		}
 	}
 
-	function shadow_decreaseLiquidity(address token, uint256 amount) public onlyDiamond {
-		// TODO shadow
-		// https://github.com/code-423n4/2024-10-ramses-exchange/blob/1ba89267cc7c010f13c4d405476090641d18b146/contracts/CL/periphery/NonfungiblePositionManager.sol#L264
-	}
-
-
-	uint256 internal constant Q96 = 0x1000000000000000000000000;
-
-	function calculateSqrtPriceX96(uint256 amount0, uint256 amount1) internal pure returns (uint160) {
-		return uint160(FPML.mulDiv(FPML.sqrt(amount1), Q96, FPML.sqrt(amount0)));
+	function shadowlp_claimExternalFees() public onlyDiamond {
+		// TODO
 	}
 
 }

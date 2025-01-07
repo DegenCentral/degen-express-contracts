@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { LibCore } from "../../libraries/LibCore.sol";
@@ -105,7 +105,7 @@ contract Core is Diamondable {
 		LibCore.gatherProceeds(creationEth);
 
 		if (initialBuy > 0) {
-			_buy(creator, tokenAddress, initialBuy, 0);
+			_buy(creator, tokenAddress, initialBuy, 0, block.timestamp);
 			eth -= initialBuy;
 		}
 
@@ -131,13 +131,23 @@ contract Core is Diamondable {
 		}
 	}
 
+	event DexChanged(address token, LibDex.Dex dex);
+	function updateDex(address token, LibDex.Dex dex) external {
+		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
+		require(info.creator == msg.sender, "unauthorized");
+
+		info.dex = dex;
+		emit DexChanged(token, dex);
+	}
+
 	event Bought(address buyer, address token, uint256 ethIn, uint256 tokensOut, uint256 priceNew);
 
-	function buy(address token, uint256 min) public payable {
-		Core(address(this))._buy(msg.sender, token, msg.value, min);
+	function buy(address token, uint256 min, uint256 deadline) public payable {
+		Core(address(this))._buy(msg.sender, token, msg.value, min, deadline);
 	}
-	function _buy(address buyer, address token, uint256 ethIn, uint256 min) public onlyDiamond {
+	function _buy(address buyer, address token, uint256 ethIn, uint256 min, uint256 deadline) public onlyDiamond {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
+		require(deadline >= block.timestamp, "deadline passed");
 
 		(uint256 tokensOut, uint256 price) = (0, 0);
 		if (strategy == LibTokens.LaunchStrategy.FakeLiquidity) {
@@ -158,11 +168,12 @@ contract Core is Diamondable {
 
 	event Sold(address seller, address token, uint256 ethOut, uint256 tokensIn, uint256 priceNew);
 
-	function sell(address token, uint256 amount, uint256 min) public {
-		Core(address(this))._sell(msg.sender, token, amount, min);
+	function sell(address token, uint256 amount, uint256 min, uint256 deadline) public {
+		Core(address(this))._sell(msg.sender, token, amount, min, deadline);
 	}
-	function _sell(address seller, address token, uint256 amount, uint256 min) public onlyDiamond {
+	function _sell(address seller, address token, uint256 amount, uint256 min, uint256 deadline) public onlyDiamond {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
+		require(deadline >= block.timestamp, "deadline passed");
 
 		(uint256 ethOut, uint256 price) = (0, 0);
 		if (strategy == LibTokens.LaunchStrategy.FakeLiquidity) {

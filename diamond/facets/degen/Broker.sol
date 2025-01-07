@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNKNOWN
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { LibTokens } from "../../libraries/LibTokens.sol";
@@ -135,7 +135,7 @@ contract Broker is EIP712 {
 
 		store().nonces[order.buyer].buy++;
 
-		Core(address(this))._buy(order.buyer, order.token, order.amount, order.min);
+		Core(address(this))._buy(order.buyer, order.token, order.amount, order.min, order.deadline);
 	}
 
 
@@ -168,7 +168,7 @@ contract Broker is EIP712 {
 
 		store().nonces[order.seller].sell++;
 
-		Core(address(this))._sell(order.seller, order.token, order.amount, order.min);
+		Core(address(this))._sell(order.seller, order.token, order.amount, order.min, order.deadline);
 	}
 	
 }
