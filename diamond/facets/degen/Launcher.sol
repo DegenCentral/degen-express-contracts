@@ -17,6 +17,8 @@ import { Token } from "../../../Token.sol";
 
 contract Launcher is Diamondable {
 
+	address constant dEaD = address(0x000000000000000000000000000000000000dEaD);
+
 	function launch(address token, LibTokens.TokenInfo calldata tokenInfo) public onlyDiamond returns (address pair, uint256 eth, uint256 tokens) {
 		if (tokenInfo.strategy == LibTokens.LaunchStrategy.FakeLiquidity) {
 			uint256 fakeEth;
@@ -26,7 +28,7 @@ contract Launcher is Diamondable {
 			LibDex.decreaseLiquidity(tokenInfo.dex, token, fakeEth);
 
 			// burn tokens
-			Token(token).transfer(address(0), Token(token).balanceOf(address(this)));
+			Token(token).transfer(dEaD, Token(token).balanceOf(address(this)));
 
 			LpTreasury(address(this)).handleLp(tokenInfo.dex, token);
 		} else {

@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 // Contracts/Libraries/Modifiers
 import { Diamondable } from "../../../Diamondable.sol";
 import { LibLp } from "../../../libraries/LibLp.sol";
+import { LibDiamond } from "../../../libraries/LibDiamond.sol";
 
 // Libraries
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
@@ -91,6 +92,15 @@ contract Equalizer is Diamondable {
 			address(this),
 			block.timestamp
 		);
+	}
+
+	function equal_move_state(address[] calldata tokens) external {
+		LibDiamond.enforceIsContractOwner();
+
+		for (uint256 i = 0; i < tokens.length; i++) {
+			address token = tokens[i];
+			LibLp.store().equal_amm_positions[token] = equal_pairFor(token);
+		}
 	}
 
 }

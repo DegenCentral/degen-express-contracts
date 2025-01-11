@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 // Contracts/Libraries/Modifiers
 import { LibCore } from "../../libraries/LibCore.sol";
 import { LibUsd } from "../../libraries/LibUsd.sol";
+import { LibDiamond } from "../../libraries/LibDiamond.sol";
 import { LibTokens } from "../../libraries/LibTokens.sol";
 import { LibDex } from "../../libraries/LibDex.sol";
 import { LibLST } from "../../libraries/LibLST.sol";
@@ -135,6 +136,7 @@ contract Core is Diamondable {
 	function updateDex(address token, LibDex.Dex dex) external {
 		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
 		require(info.creator == msg.sender, "unauthorized");
+		require(info.pair == address(0), "launched");
 
 		info.dex = dex;
 		emit DexChanged(token, dex);
@@ -194,6 +196,21 @@ contract Core is Diamondable {
 	}
 
 	function launch(address token) public onlyDiamond {
+		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
+		require(info.creator != address(0), "invalid token");
+
+		Token(token).unlock();
+
+		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, info);
+
+		Degen(address(this)).attributeXp(info.creator, Degen.XpType.Launch, eth);
+
+		info.pair = pair;
+		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
+	}
+
+	function force_launch(address token) public {
+		LibDiamond.enforceIsContractOwner();
 		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
 		require(info.creator != address(0), "invalid token");
 

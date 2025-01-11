@@ -17,12 +17,16 @@ import { FixedPointMathLib as FPML } from "solady/src/utils/FixedPointMathLib.so
 import { Token } from "../../../../Token.sol";
 
 
+interface IwETH {
+	function deposit() external payable;
+}
+
 contract Shadow is Diamondable {
 
 	IRamsesV3Factory constant factory = IRamsesV3Factory(0xcD2d0637c94fe77C2896BbCBB174cefFb08DE6d7);
 	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
 
-	int24 internal spacing = 50;
+	int24 constant spacing = 50;
 
 	function shadow_pairFor(address token) public view returns (address) {
 		return factory.getPool(token, nfpManager.WETH9(), spacing);
@@ -51,6 +55,8 @@ contract Shadow is Diamondable {
 				calculateSqrtPriceX96(amount0, amount1)
 			);
 		}
+
+		IwETH(weth).deposit{ value: ethAmount }();
 
 		Token(token0).approve(address(nfpManager), amount0);
 		Token(token1).approve(address(nfpManager), amount1);
