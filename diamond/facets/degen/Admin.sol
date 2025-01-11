@@ -37,10 +37,6 @@ contract Admin is Ownable {
 		);
 	}
 
-	function setPair(address token, address pair) external onlyOwner {
-		LibTokens.store().tokens[token].pair = pair;
-	}
-
 	// SETTERS
 
 	function setProceedsReceiver(address receiver) external onlyOwner {

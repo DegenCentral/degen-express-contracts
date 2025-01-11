@@ -209,19 +209,4 @@ contract Core is Diamondable {
 		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
 	}
 
-	function force_launch(address token) public {
-		LibDiamond.enforceIsContractOwner();
-		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
-		require(info.creator != address(0), "invalid token");
-
-		Token(token).unlock();
-
-		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, info);
-
-		Degen(address(this)).attributeXp(info.creator, Degen.XpType.Launch, eth);
-
-		info.pair = pair;
-		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
-	}
-
 }
