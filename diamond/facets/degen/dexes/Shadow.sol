@@ -19,12 +19,29 @@ import { Token } from "../../../../Token.sol";
 
 interface IwETH {
 	function deposit() external payable;
+	function withdraw(uint256 value) external;
+}
+
+interface ISwapRouter {
+	struct ExactInputSingleParams {
+		address tokenIn;
+		address tokenOut;
+		int24 tickSpacing;
+		address recipient;
+		uint256 deadline;
+		uint256 amountIn;
+		uint256 amountOutMinimum;
+		uint160 sqrtPriceLimitX96;
+	}
+
+	function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 }
 
 contract Shadow is Diamondable {
 
 	IRamsesV3Factory constant factory = IRamsesV3Factory(0xcD2d0637c94fe77C2896BbCBB174cefFb08DE6d7);
 	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
+	ISwapRouter constant router = ISwapRouter(0x5543c6176FEb9B4b179078205d7C29EEa2e2d695);
 
 	int24 constant spacing = 50;
 
@@ -77,6 +94,33 @@ contract Shadow is Diamondable {
 			});
 
 		(uint256 tokenId,,,) = nfpManager.mint(params);
+
+		// initial mini swap to trigger indexing
+		uint256 amountWeth = 2 ether;
+		IwETH(weth).deposit{ value: amountWeth }();
+		Token(weth).approve(address(router), amountWeth);
+		uint256 tokenOut = router.exactInputSingle(ISwapRouter.ExactInputSingleParams({
+			tokenIn: weth,
+			tokenOut: token,
+			tickSpacing: spacing,
+			recipient: address(this),
+			deadline: block.timestamp,
+			amountIn: amountWeth,
+			amountOutMinimum: 1,
+			sqrtPriceLimitX96: 0
+		}));
+		Token(token).approve(address(router), tokenOut);
+		uint256 wethOut = router.exactInputSingle(ISwapRouter.ExactInputSingleParams({
+			tokenIn: token,
+			tokenOut: weth,
+			tickSpacing: spacing,
+			recipient: address(this),
+			deadline: block.timestamp,
+			amountIn: tokenOut,
+			amountOutMinimum: 1,
+			sqrtPriceLimitX96: 0
+		}));
+		IwETH(weth).withdraw(wethOut);
 
 		LibLp.store().shadow_cl_positions[token] = tokenId;
 	}

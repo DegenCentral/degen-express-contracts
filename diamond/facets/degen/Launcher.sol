@@ -25,10 +25,13 @@ contract Launcher is Diamondable {
 			(eth, tokens, fakeEth) = FakePools(address(this)).fakepool_close(token);
 
 			LibDex.addLiquidty(tokenInfo.dex, token, eth + fakeEth, tokens);
+
+			uint256 amountBefore = Token(token).balanceOf(address(this));
 			LibDex.decreaseLiquidity(tokenInfo.dex, token, fakeEth);
+			uint256 amountAfter = Token(token).balanceOf(address(this));
 
 			// burn tokens
-			Token(token).transfer(dEaD, Token(token).balanceOf(address(this)));
+			Token(token).transfer(dEaD, amountAfter - amountBefore);
 
 			LpTreasury(address(this)).handleLp(tokenInfo.dex, token);
 		} else {

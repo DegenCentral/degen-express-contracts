@@ -477,6 +477,13 @@ export const coreAbi = [
   {
     type: 'function',
     inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    name: 'force_launch',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
     name: 'launch',
     outputs: [],
     stateMutability: 'nonpayable',
