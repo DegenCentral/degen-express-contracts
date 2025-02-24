@@ -94,13 +94,4 @@ contract Equalizer is Diamondable {
 		);
 	}
 
-	function equal_move_state(address[] calldata tokens) external {
-		LibDiamond.enforceIsContractOwner();
-
-		for (uint256 i = 0; i < tokens.length; i++) {
-			address token = tokens[i];
-			LibLp.store().equal_amm_positions[token] = equal_pairFor(token);
-		}
-	}
-
 }

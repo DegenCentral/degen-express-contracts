@@ -57,7 +57,7 @@ contract LpTreasury is Diamondable {
 	}
 
 	eLockerRoom constant lockerRoom = eLockerRoom(0xC6b515328F970EC25228A716BF91774E5BD5Abc0);
-	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
+	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0x12E66C8F215DdD5d48d150c8f46aD0c6fB0F4406);
 	
 	function reapFees(address token, LibDex.Dex dex) internal {
 		if (dex == LibDex.Dex.Equalizer) {
@@ -179,7 +179,7 @@ contract LpTreasury is Diamondable {
 			receiver = tokenInfo.creator;
 		} else {
 			share = claimShares.protocol;
-			receiver = LibCore.store().proceedsReceiver;
+			receiver = LibDiamond.contractOwner();
 		}
 
 		address[] memory assets = ESL.values(share.assets);
@@ -198,9 +198,9 @@ contract LpTreasury is Diamondable {
 
 	function handleLp(LibDex.Dex dex, address token) public {
 		require(msg.sender == LibDiamond.contractOwner() || msg.sender == LibDiamond.diamondStorage().diamondAddress);
-		require(store().elocks[token] == address(0), "already handled");
 
 		if (dex == LibDex.Dex.Equalizer) {
+			require(store().elocks[token] == address(0), "already handled");
 			address lp = LibLp.store().equal_amm_positions[token];
 			uint256 amount = Token(lp).balanceOf(address(this));
 

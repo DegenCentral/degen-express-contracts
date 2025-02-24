@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
+import { LibDiamond } from "../../../libraries/LibDiamond.sol";
 import { Diamondable } from "../../../Diamondable.sol";
 import { LibLp } from "../../../libraries/LibLp.sol";
 
@@ -40,7 +41,7 @@ interface ISwapRouter {
 contract Shadow is Diamondable {
 
 	IRamsesV3Factory constant factory = IRamsesV3Factory(0xcD2d0637c94fe77C2896BbCBB174cefFb08DE6d7);
-	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
+	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0x12E66C8F215DdD5d48d150c8f46aD0c6fB0F4406);
 	ISwapRouter constant router = ISwapRouter(0x5543c6176FEb9B4b179078205d7C29EEa2e2d695);
 
 	int24 constant spacing = 50;
@@ -161,6 +162,8 @@ contract Shadow is Diamondable {
 				amount1Max: type(uint128).max
 			})
 		);
+
+		IwETH(weth).withdraw(Token(weth).balanceOf(address(this)));
 	}
 
 
@@ -168,6 +171,14 @@ contract Shadow is Diamondable {
 
 	function calculateSqrtPriceX96(uint256 amount0, uint256 amount1) internal pure returns (uint160) {
 		return uint160(FPML.mulDiv(FPML.sqrt(amount1), Q96, FPML.sqrt(amount0)));
+	}
+
+	// add bridged shadow positons
+	function shadow_add_token(address token, uint256 tokenId) external {
+		LibDiamond.enforceIsContractOwner();
+
+		nfpManager.transferFrom(msg.sender, address(this), tokenId);
+		LibLp.store().shadow_cl_positions[token] = tokenId;
 	}
 
 }

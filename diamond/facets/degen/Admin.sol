@@ -37,6 +37,15 @@ contract Admin is Ownable {
 		);
 	}
 
+	function fixMigrateTokenAmount(address token) external onlyOwner {
+		LibFakePools.FakePool storage pool = LibFakePools.store().pools[token];
+		pool.tokenReserve = Token(token).balanceOf(address(this));
+	}
+
+	function donate() external payable {
+		LibCore.store().proceeds += msg.value;
+	}
+
 	// SETTERS
 
 	function setProceedsReceiver(address receiver) external onlyOwner {

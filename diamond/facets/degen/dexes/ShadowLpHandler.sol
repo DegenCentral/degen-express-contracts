@@ -28,7 +28,7 @@ contract ShadowLpHandler is Diamondable {
 		assembly { s.slot := position }
 	}
 
-	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0xA57FA38b3fd45922394e9E1077748A2383F1542E);
+	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0x12E66C8F215DdD5d48d150c8f46aD0c6fB0F4406);
 
 	function shadowlp_claim(address token) external {
 		uint8 maxClaim;

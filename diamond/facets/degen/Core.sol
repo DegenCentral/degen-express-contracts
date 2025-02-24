@@ -18,9 +18,6 @@ import { Degen } from "./Degen.sol";
 // Interfaces
 import { Token } from "../../../Token.sol";
 
-// Third Party
-import { DynamicBufferLib } from "solady/src/utils/DynamicBufferLib.sol";
-
 
 contract Core is Diamondable {
 	event TokenCreated(
@@ -165,6 +162,7 @@ contract Core is Diamondable {
 		Degen(address(this)).attributeXp(buyer, Degen.XpType.Buy, ethIn);
 
 		Token(token).transfer(buyer, tokensOut); // Transfer tokens to buyer
+
 		emit Bought(buyer, token, ethIn, tokensOut, price);
 	}
 
@@ -192,6 +190,7 @@ contract Core is Diamondable {
 
 		Token(token).transferFrom(seller, address(this), amount); // Transfer tokens from seller
 		(bool sent,) = seller.call{ value: ethOut }(""); require(sent); // Transfer eth to seller
+		
 		emit Sold(seller, token, ethOut, amount, price);
 	}
 
