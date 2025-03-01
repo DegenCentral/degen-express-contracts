@@ -46,8 +46,8 @@ contract Core is Diamondable {
 		LibTokens.LaunchStrategy strategy,
 		LibDex.Dex dex,
 		uint256 initialBuy
-	) public payable {
-		Core(address(this))._create(msg.sender, name, symbol, description, image, links, data, strategy, dex, initialBuy, msg.value);
+	) public payable returns (address) {
+		return Core(address(this))._create(msg.sender, name, symbol, description, image, links, data, strategy, dex, initialBuy, msg.value);
 	}
 
 	function _create(

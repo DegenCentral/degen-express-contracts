@@ -115,6 +115,13 @@ export const adminAbi = [
     ],
     stateMutability: 'pure',
   },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'wrapEth',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -559,7 +566,7 @@ export const coreAbi = [
       { name: 'initialBuy', internalType: 'uint256', type: 'uint256' },
     ],
     name: 'create',
-    outputs: [],
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
     stateMutability: 'payable',
   },
   {

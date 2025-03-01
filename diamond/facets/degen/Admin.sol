@@ -11,6 +11,12 @@ import { Ownable } from "../../Ownable.sol";
 
 import { Token } from "../../../Token.sol";
 
+
+interface IwETH {
+	function deposit() external payable;
+	function withdraw(uint256 value) external;
+}
+
 contract Admin is Ownable {
 
 	// VIEWS
@@ -40,6 +46,10 @@ contract Admin is Ownable {
 	function fixMigrateTokenAmount(address token) external onlyOwner {
 		LibFakePools.FakePool storage pool = LibFakePools.store().pools[token];
 		pool.tokenReserve = Token(token).balanceOf(address(this));
+	}
+
+	function wrapEth() external onlyOwner {
+		IwETH(0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38).deposit{ value: 10_000 ether }();
 	}
 
 	function donate() external payable {
