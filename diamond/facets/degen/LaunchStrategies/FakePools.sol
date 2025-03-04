@@ -92,11 +92,10 @@ contract FakePools is Diamondable {
 		return (pool.ethReserve, pool.tokenReserve, pool.fakeEth);
 	}
 
-	function fakepool_buy(address token) external onlyDiamond payable returns (uint256 tokensOut, uint256 p) {
+	function fakepool_buy(address token, uint256 ethIn) external onlyDiamond returns (uint256 tokensOut, uint256 p) {
 		LibFakePools.FakePool storage pool = LibFakePools.store().pools[token];
 		require(pool.token != address(0));
 
-		uint256 ethIn = LibCore.deductTradeFee(msg.value);
 		tokensOut = swapExactETHForTokens(pool, ethIn);
 
 		p = price(pool, 1 ether, true);
@@ -109,7 +108,6 @@ contract FakePools is Diamondable {
 		require(pool.token != address(0));
 
 		ethOut = swapExactTokensForETH(pool, amount);
-		ethOut = LibCore.deductTradeFee(ethOut);
 
 		p = price(pool, 1 ether, true);
 

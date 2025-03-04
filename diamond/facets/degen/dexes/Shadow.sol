@@ -146,6 +146,8 @@ contract Shadow is Diamondable {
 
 		uint256 liqToRemove = FPML.mulDivUp(uint256(liquidity), ethAmount, liqWeth);
 
+		uint256 wethBefore = Token(weth).balanceOf(address(this));
+
 		nfpManager.decreaseLiquidity(INonfungiblePositionManager.DecreaseLiquidityParams({
 			tokenId: tokenId,
 			liquidity: uint128(liqToRemove),
@@ -163,7 +165,8 @@ contract Shadow is Diamondable {
 			})
 		);
 
-		IwETH(weth).withdraw(Token(weth).balanceOf(address(this)));
+		uint256 wethAfter = Token(weth).balanceOf(address(this)) - wethBefore;
+		IwETH(weth).withdraw(wethAfter);
 	}
 
 

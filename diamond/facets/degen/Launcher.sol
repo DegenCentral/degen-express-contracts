@@ -5,7 +5,6 @@ pragma solidity 0.8.20;
 import { LibDex } from "../../libraries/LibDex.sol";
 import { LibUtils } from "../../libraries/LibUtils.sol";
 import { LibTokens } from "../../libraries/LibTokens.sol";
-import { LpTreasury } from "./LpTreasury.sol";
 import { Diamondable } from "../../Diamondable.sol";
 
 // Facets
@@ -32,8 +31,6 @@ contract Launcher is Diamondable {
 
 			// burn tokens
 			Token(token).transfer(dEaD, amountAfter - amountBefore);
-
-			LpTreasury(address(this)).handleLp(tokenInfo.dex, token);
 		} else {
 			revert("invalid strategy");
 		}

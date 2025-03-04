@@ -143,23 +143,26 @@ contract Core is Diamondable {
 
 	function buy(address token, uint256 min, uint256 deadline) public payable {
 		Core(address(this))._buy(msg.sender, token, msg.value, min, deadline);
+		revert();
 	}
 	function _buy(address buyer, address token, uint256 ethIn, uint256 min, uint256 deadline) public onlyDiamond {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
 		require(deadline >= block.timestamp, "deadline passed");
 
+		Degen(address(this)).attributeXp(buyer, Degen.XpType.Buy, ethIn);
+
+		ethIn = LibCore.deductTradeFee(ethIn);
+
+		LibLST.addLiquidity(ethIn);
+
 		(uint256 tokensOut, uint256 price) = (0, 0);
 		if (strategy == LibTokens.LaunchStrategy.FakeLiquidity) {
-			(tokensOut, price) = FakePools(address(this)).fakepool_buy{ value: ethIn }(token);
+			(tokensOut, price) = FakePools(address(this)).fakepool_buy(token, ethIn);
 		} else {
 			revert("invalid strategy");
 		}
 
 		if (min != 0) require(tokensOut >= min, "amount out lower than min");
-
-		LibLST.addLiquidity(ethIn);
-
-		Degen(address(this)).attributeXp(buyer, Degen.XpType.Buy, ethIn);
 
 		Token(token).transfer(buyer, tokensOut); // Transfer tokens to buyer
 
@@ -170,6 +173,7 @@ contract Core is Diamondable {
 
 	function sell(address token, uint256 amount, uint256 min, uint256 deadline) public {
 		Core(address(this))._sell(msg.sender, token, amount, min, deadline);
+		revert();
 	}
 	function _sell(address seller, address token, uint256 amount, uint256 min, uint256 deadline) public onlyDiamond {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
@@ -182,11 +186,13 @@ contract Core is Diamondable {
 			revert("invalid strategy");
 		}
 
-		if (min != 0) require(ethOut >= min, "amount out lower than min");
+		Degen(address(this)).attributeXp(seller, Degen.XpType.Sell, ethOut);
 
 		LibLST.removeLiquidity(ethOut);
 
-		Degen(address(this)).attributeXp(seller, Degen.XpType.Sell, ethOut);
+		ethOut = LibCore.deductTradeFee(ethOut);
+
+		if (min != 0) require(ethOut >= min, "amount out lower than min");
 
 		Token(token).transferFrom(seller, address(this), amount); // Transfer tokens from seller
 		(bool sent,) = seller.call{ value: ethOut }(""); require(sent); // Transfer eth to seller
@@ -199,13 +205,15 @@ contract Core is Diamondable {
 		require(info.creator != address(0), "invalid token");
 
 		Token(token).unlock();
-
+		
 		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, info);
 
 		Degen(address(this)).attributeXp(info.creator, Degen.XpType.Launch, eth);
 
 		info.pair = pair;
 		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
+
+		revert();
 	}
 
 }

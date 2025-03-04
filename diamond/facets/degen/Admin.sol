@@ -19,38 +19,14 @@ interface IwETH {
 
 contract Admin is Ownable {
 
-	// VIEWS
-
-	function state() external pure returns (LibCore.Storage memory) {
-		return LibCore.store();
-	}
-
-	// EXTERNAL
-
-	function reap() external {
+	function reap() external onlyOwner {
 		uint256 proceeds = LibCore.store().proceeds;
 		(bool sent,) = LibCore.store().proceedsReceiver.call{ value: proceeds }("");
 		require(sent);
 		LibCore.store().proceeds = 0;
 	}
 
-	function addToken(address token, address creator, LibTokens.LaunchStrategy strategy, LibDex.Dex dex, address pair) external onlyOwner {
-		LibTokens.store().tokens[token] = LibTokens.TokenInfo(
-			creator,
-			strategy,
-			dex,
-			pair
-		);
-	}
-
-	function fixMigrateTokenAmount(address token) external onlyOwner {
-		LibFakePools.FakePool storage pool = LibFakePools.store().pools[token];
-		pool.tokenReserve = Token(token).balanceOf(address(this));
-	}
-
-	function wrapEth() external onlyOwner {
-		IwETH(0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38).deposit{ value: 10_000 ether }();
-	}
+	// EXTERNAL
 
 	function donate() external payable {
 		LibCore.store().proceeds += msg.value;

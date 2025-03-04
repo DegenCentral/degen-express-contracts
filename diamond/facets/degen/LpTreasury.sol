@@ -17,21 +17,10 @@ import { INonfungiblePositionManager } from "ramses-v3/contracts/CL/periphery/in
 // Interfaces
 import { Token } from "../../../Token.sol";
 
-
-// https://ftmscan.com/address/0x2f20A659601d1c161A108E0725FEF31256a907ad#writeProxyContract
-interface eLockerRoom {
-	function createLock(address _lp, uint _amt, uint _exp) external returns(address _locker, uint _ID);
-}
-
-// https://ftmscan.com/address/0xf3ddc1a30f927620c12a5d614679d9790a0284c6#readContract
-interface eLock {
-	function token0() external view returns (address);
-	function token1() external view returns (address);
-
-	function rewardsList() external view returns (address[] memory);
-
-	function claimFees() external;
-	function claimRewards() external;
+// https://sonicscan.org/address/0x157d9c9900c2d7ae88deb6acbf3a016f3c1e938c#readContract
+interface EqualPair {
+	function tokens() external view returns (address token0, address token1);
+	function claimFees() external returns (uint claimed0, uint claimed1);
 }
 
 contract LpTreasury is Diamondable {
@@ -56,42 +45,23 @@ contract LpTreasury is Diamondable {
 		assembly { s.slot := position }
 	}
 
-	eLockerRoom constant lockerRoom = eLockerRoom(0xC6b515328F970EC25228A716BF91774E5BD5Abc0);
 	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0x12E66C8F215DdD5d48d150c8f46aD0c6fB0F4406);
 	
 	function reapFees(address token, LibDex.Dex dex) internal {
 		if (dex == LibDex.Dex.Equalizer) {
-			eLock lock = eLock(store().elocks[token]);
+			EqualPair pair = EqualPair(LibLp.store().equal_amm_positions[token]);
+			(address token0, address token1) = pair.tokens();
 
-			(address token0, address token1) = (lock.token0(), lock.token1());
-			address[] memory rewardAssets = lock.rewardsList();
-
-			address[] memory assets = new address[](2 + rewardAssets.length);
-			uint256[] memory amounts = new uint256[](2 + rewardAssets.length);
-			uint256[] memory amountsBefore = new uint256[](2 + rewardAssets.length);
+			address[] memory assets = new address[](2);
+			uint256[] memory amounts = new uint256[](2);
 
 			assets[0] = token0;
 			assets[1] = token1;
-			amountsBefore[0] = Token(token0).balanceOf(address(this));
-			amountsBefore[1] = Token(token1).balanceOf(address(this));
 
-			lock.claimFees();
+			(uint256 amount0, uint256 amount1) = pair.claimFees();
 			
-			amounts[0] = Token(token0).balanceOf(address(this)) - amountsBefore[0];
-			amounts[1] = Token(token1).balanceOf(address(this)) - amountsBefore[1];
-
-			if (rewardAssets.length > 0) {
-				for (uint256 i = 0; i < rewardAssets.length; i++) {
-					amountsBefore[2 + i] = Token(rewardAssets[i]).balanceOf(address(this));
-				}
-
-				lock.claimRewards();
-
-				for (uint256 i = 0; i < rewardAssets.length; i++) {
-					assets[2 + i] = rewardAssets[i];
-					amounts[2 + i] = Token(rewardAssets[i]).balanceOf(address(this)) - amountsBefore[2 + i];
-				}
-			}
+			amounts[0] = amount0;
+			amounts[1] = amount1;
 
 			ClaimShares storage shares = store().claimShares[token];
 			for (uint256 i = 0; i < assets.length; i++) {
@@ -104,14 +74,11 @@ contract LpTreasury is Diamondable {
 
 			address[] memory assets = new address[](2);
 			uint256[] memory amounts = new uint256[](2);
-			uint256[] memory amountsBefore = new uint256[](2);
 
 			assets[0] = token0;
 			assets[1] = token1;
-			amountsBefore[0] = Token(token0).balanceOf(address(this));
-			amountsBefore[1] = Token(token1).balanceOf(address(this));
 
-			nfpManager.collect(
+			(uint256 amount0, uint256 amount1) = nfpManager.collect(
 				INonfungiblePositionManager.CollectParams({
 					tokenId: tokenId,
 					recipient: address(this),
@@ -120,12 +87,8 @@ contract LpTreasury is Diamondable {
 				})
 			);
 
-			amounts[0] = Token(token0).balanceOf(address(this)) - amountsBefore[0];
-			amounts[1] = Token(token1).balanceOf(address(this)) - amountsBefore[1];
-
-			// TODO when shadow rewards go live
-			// https://github.com/code-423n4/2024-10-ramses-exchange/blob/1ba89267cc7c010f13c4d405476090641d18b146/contracts/Gauge.sol#L68
-			// https://github.com/code-423n4/2024-10-ramses-exchange/blob/1ba89267cc7c010f13c4d405476090641d18b146/contracts/CL/periphery/NonfungiblePositionManager.sol#L421
+			amounts[0] = amount0;
+			amounts[1] = amount1;
 
 			// TODO
 			// shadowlp_claimExternalFees
@@ -194,25 +157,6 @@ contract LpTreasury is Diamondable {
 		}
 
 		emit FeesClaimed(assets, amounts);
-	}
-
-	function handleLp(LibDex.Dex dex, address token) public {
-		require(msg.sender == LibDiamond.contractOwner() || msg.sender == LibDiamond.diamondStorage().diamondAddress);
-
-		if (dex == LibDex.Dex.Equalizer) {
-			require(store().elocks[token] == address(0), "already handled");
-			address lp = LibLp.store().equal_amm_positions[token];
-			uint256 amount = Token(lp).balanceOf(address(this));
-
-			Token(lp).approve(address(lockerRoom), amount);
-			(address vault,) = lockerRoom.createLock(lp, amount, block.timestamp + 1);
-
-			store().elocks[token] = vault;
-		} else if (dex == LibDex.Dex.Shadow) {
-			// TODO when shadow rewards go live - might need to stake here
-		} else {
-			revert("invalid dex");
-		}
 	}
 
 }

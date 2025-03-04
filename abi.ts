@@ -10,34 +10,10 @@ export const adminAbi = [
   },
   {
     type: 'function',
-    inputs: [
-      { name: 'token', internalType: 'address', type: 'address' },
-      { name: 'creator', internalType: 'address', type: 'address' },
-      {
-        name: 'strategy',
-        internalType: 'enum LibTokens.LaunchStrategy',
-        type: 'uint8',
-      },
-      { name: 'dex', internalType: 'enum LibDex.Dex', type: 'uint8' },
-      { name: 'pair', internalType: 'address', type: 'address' },
-    ],
-    name: 'addToken',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
     inputs: [],
     name: 'donate',
     outputs: [],
     stateMutability: 'payable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
-    name: 'fixMigrateTokenAmount',
-    outputs: [],
-    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -88,37 +64,6 @@ export const adminAbi = [
       { name: 'heartBeat', internalType: 'uint256', type: 'uint256' },
     ],
     name: 'setUsdOracle',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'state',
-    outputs: [
-      {
-        name: '',
-        internalType: 'struct LibCore.Storage',
-        type: 'tuple',
-        components: [
-          { name: 'proceeds', internalType: 'uint256', type: 'uint256' },
-          { name: 'creationPrice', internalType: 'uint256', type: 'uint256' },
-          { name: 'tradeFee', internalType: 'uint16', type: 'uint16' },
-          { name: 'tokenSupply', internalType: 'uint256', type: 'uint256' },
-          {
-            name: 'proceedsReceiver',
-            internalType: 'address',
-            type: 'address',
-          },
-        ],
-      },
-    ],
-    stateMutability: 'pure',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'wrapEth',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -820,13 +765,16 @@ export const fakePoolsAbi = [
   },
   {
     type: 'function',
-    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    inputs: [
+      { name: 'token', internalType: 'address', type: 'address' },
+      { name: 'ethIn', internalType: 'uint256', type: 'uint256' },
+    ],
     name: 'fakepool_buy',
     outputs: [
       { name: 'tokensOut', internalType: 'uint256', type: 'uint256' },
       { name: 'p', internalType: 'uint256', type: 'uint256' },
     ],
-    stateMutability: 'payable',
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -959,16 +907,6 @@ export const lpTreasuryAbi = [
     type: 'function',
     inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
     name: 'claimFees',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'dex', internalType: 'enum LibDex.Dex', type: 'uint8' },
-      { name: 'token', internalType: 'address', type: 'address' },
-    ],
-    name: 'handleLp',
     outputs: [],
     stateMutability: 'nonpayable',
   },
