@@ -64,13 +64,12 @@ contract Broker is EIP712 {
 	}
 
 	function createFor(CreationOrder calldata order, bytes memory signature) public payable {
-		require(block.timestamp <= order.deadline, "expired");
 		require(store().nonces[order.creator].create == order.nonce, "nonce already used");
 		require(msg.value > order.initialBuy, "invalid amount");
 
 		verifyOrder(
 			keccak256(abi.encode(
-				keccak256("CreationOrder(address creator,string name,string symbol,string description,bytes image,string[] links,bytes data,uint8 strategy,uint8 dex,uint256 initialBuy,uint256 nonce,uint256 deadline;)"),
+				keccak256("CreationOrder(address creator,string name,string symbol,string description,bytes image,string[] links,bytes data,uint8 strategy,uint8 dex,uint256 initialBuy,uint256 nonce,uint256 deadline)"),
 				order.creator,
 				order.name,
 				order.symbol,
@@ -115,7 +114,6 @@ contract Broker is EIP712 {
 	}
 
 	function buyFor(BuyOrder calldata order, bytes memory signature) public payable {
-		require(block.timestamp <= order.deadline, "expired");
 		require(store().nonces[order.buyer].buy == order.nonce, "nonce already used");
 		require(order.amount == msg.value, "invalid amount");
 
@@ -149,7 +147,6 @@ contract Broker is EIP712 {
 	}
 
 	function sellFor(SellOrder calldata order, bytes memory signature) public {
-		require(block.timestamp <= order.deadline, "expired");
 		require(store().nonces[order.seller].sell == order.nonce, "nonce already used");
 
 		verifyOrder(

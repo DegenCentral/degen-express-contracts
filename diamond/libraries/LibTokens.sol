@@ -15,6 +15,7 @@ library LibTokens {
 		LaunchStrategy strategy;
 		LibDex.Dex dex;
 		address pair;
+		bool launched;
 	}
 
 	struct Storage {

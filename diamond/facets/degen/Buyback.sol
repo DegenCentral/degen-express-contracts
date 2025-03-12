@@ -19,19 +19,19 @@ contract Buyback is Ownable {
 
 	event BoughtBack(address token, uint256 amount);
 
-	function buyback(address token, uint256 amount) external onlyOwner {
+	function buyback(address token, uint256 amount, uint256 amountOutMin) external onlyOwner {
 		require(LibCore.store().proceeds >= amount, "Buyback: insufficient proceeds");
 		LibCore.store().proceeds -= amount;
 		
-		Core(address(this))._buy(address(0x000000000000000000000000000000000000dEaD), token, amount, 1, block.timestamp);
+		Core(address(this))._buy(address(0x000000000000000000000000000000000000dEaD), token, amount, amountOutMin, block.timestamp);
 
 		emit BoughtBack(token, amount);
 	}
 
-	event BoughtBackSponsored(address token, uint256 amount);
+	event BoughtBackSponsored(address token, uint256 amount, uint256 amountOutMin);
 
 	function sponsoredBuyback(address token) external payable onlyOwner {
-		Core(address(this))._buy(address(0x000000000000000000000000000000000000dEaD), token, msg.value, 1, block.timestamp);
+		Core(address(this))._buy(address(0x000000000000000000000000000000000000dEaD), token, msg.value, amountOutMin, block.timestamp);
 		emit BoughtBackSponsored(token, msg.value);
 	}
 

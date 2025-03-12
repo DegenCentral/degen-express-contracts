@@ -17,14 +17,28 @@ library LibDex {
 			pair = Shadow(address(this)).shadow_pairFor(token);
 		} else if (dex == Dex.Equalizer) {
 			pair = Equalizer(address(this)).equal_pairFor(token);
+		} else {
+			revert("invalid dex");
 		}
 	}
 
-	function addLiquidty(Dex dex, address token, uint256 ethAmount, uint256 tokenAmount) internal {
+	function createPair(Dex dex, address token) internal returns (address pair) {
 		if (dex == Dex.Shadow) {
-			Shadow(address(this)).shadow_addLiquidty(token, ethAmount, tokenAmount);
+			return Shadow(address(this)).shadow_createPair(token);
 		} else if (dex == Dex.Equalizer) {
-			Equalizer(address(this)).equal_addLiquidty(token, ethAmount, tokenAmount);
+			return Equalizer(address(this)).equal_createPair(token);
+		} else {
+			revert("invalid dex");
+		}
+	}
+
+	function addLiquidity(Dex dex, address token, uint256 ethAmount, uint256 tokenAmount) internal {
+		if (dex == Dex.Shadow) {
+			Shadow(address(this)).shadow_addLiquidity(token, ethAmount, tokenAmount);
+		} else if (dex == Dex.Equalizer) {
+			Equalizer(address(this)).equal_addLiquidity(token, ethAmount, tokenAmount);
+		} else {
+			revert("invalid dex");
 		}
 	}
 
@@ -33,6 +47,8 @@ library LibDex {
 			Shadow(address(this)).shadow_decreaseLiquidity(token, ethAmount);
 		} else if (dex == Dex.Equalizer) {
 			Equalizer(address(this)).equal_decreaseLiquidity(token, ethAmount);
+		} else {
+			revert("invalid dex");
 		}
 	}
 

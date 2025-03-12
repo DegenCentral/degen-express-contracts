@@ -16,23 +16,21 @@ import { Token } from "../../../../Token.sol";
 interface IEqualV2Pair {
 	function totalSupply() external view returns (uint);
 	function getReserves() external view returns (uint _reserve0, uint _reserve1, uint _blockTimestampLast);
+
+	function mint(address to) external returns (uint liquidity);
+}
+
+interface IEqualV2Factory {
+	function createPair(address tokenA, address tokenB, bool stable) external returns (address);
 }
 
 interface IEqualV3Router {
 	function weth() external view returns (address);
 
-	function pairFor(address tokenA, address tokenB, bool stable) external view returns (address pair);
+	function pairFor(address tokenA, address tokenB, bool stable) external view returns (address);
 
-	function addLiquidityETH(
-		address token,
-		bool stable,
-		uint amountTokenDesired,
-		uint amountTokenMin,
-		uint amountETHMin,
-		address to,
-		uint deadline
-	) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-
+	function factory() external view returns (IEqualV2Factory);
+	
 	function removeLiquidityETH(
 		address token,
 		bool stable,
@@ -44,6 +42,10 @@ interface IEqualV3Router {
 	) external returns (uint amountToken, uint amountETH);
 }
 
+interface IwETH {
+	function deposit() external payable;
+}
+
 contract Equalizer is Diamondable {
 
 	IEqualV3Router constant router = IEqualV3Router(0xcC6169aA1E879d3a4227536671F85afdb2d23fAD);
@@ -52,24 +54,25 @@ contract Equalizer is Diamondable {
 		return router.pairFor(token, router.weth(), false);
 	}
 
-	function equal_addLiquidty(
+	function equal_createPair(address token) public onlyDiamond returns (address) {
+		return router.factory().createPair(token, router.weth(), false);
+	}
+
+	function equal_addLiquidity(
 		address token,
 		uint256 ethAmount,
 		uint256 tokenAmount
 	) public onlyDiamond {
-		Token(token).approve(address(router), tokenAmount);
+		address weth = router.weth();
+		address pair = equal_pairFor(token);
 
-		router.addLiquidityETH{value: ethAmount}(
-			token,
-			false,
-			tokenAmount,
-			0,
-			0,
-			address(this),
-			block.timestamp
-		);
+		Token(token).transfer(pair, tokenAmount);
+		IwETH(weth).deposit{ value: ethAmount }();
+		Token(weth).transfer(pair, ethAmount);
 
-		LibLp.store().equal_amm_positions[token] = equal_pairFor(token);
+		IEqualV2Pair(pair).mint(address(this));
+
+		LibLp.store().equal_amm_positions[token] = pair;
 	}
 
 	function equal_decreaseLiquidity(address token, uint256 ethAmount) public onlyDiamond {

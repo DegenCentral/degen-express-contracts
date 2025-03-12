@@ -11,6 +11,9 @@ import { Diamondable } from "../../../Diamondable.sol";
 // Facets
 import { Core } from "../Core.sol";
 
+// Interfaces
+import { Token } from "../../../../Token.sol";
+
 // Third Party
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
@@ -48,7 +51,7 @@ contract FakePools is Diamondable {
 	function checkMarketCapThreshold(LibFakePools.FakePool storage pool) internal {
 		uint256 ethPrice = price(pool, 1 ether, true);
 		uint256 usdPrice = LibUsd.ethToUsd(ethPrice);
-		uint256 usdMcap = FixedPointMathLib.mulWad(LibCore.store().tokenSupply, usdPrice);
+		uint256 usdMcap = FixedPointMathLib.mulWad(Token(pool.token).totalSupply(), usdPrice);
 
 		if (usdMcap >= LibFakePools.store().usdMcapThreshold) {
 			Core(address(this)).launch(pool.token);

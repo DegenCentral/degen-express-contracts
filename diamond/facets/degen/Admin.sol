@@ -21,9 +21,9 @@ contract Admin is Ownable {
 
 	function reap() external onlyOwner {
 		uint256 proceeds = LibCore.store().proceeds;
+		LibCore.store().proceeds = 0;
 		(bool sent,) = LibCore.store().proceedsReceiver.call{ value: proceeds }("");
 		require(sent);
-		LibCore.store().proceeds = 0;
 	}
 
 	// EXTERNAL
@@ -43,6 +43,7 @@ contract Admin is Ownable {
 	}
 
 	function setTradeFee(uint16 fee) external onlyOwner {
+		require(fee <= 500);
 		LibCore.store().tradeFee = fee;
 	}
 

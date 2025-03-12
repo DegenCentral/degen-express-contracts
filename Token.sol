@@ -13,14 +13,14 @@ contract Token is ERC20 {
 	bool internal locked = true;
 
 	address internal creator;
-	string internal descripiton;
+	string internal description;
 	bytes internal image;
 	string[] internal links;
 
 	constructor(address _creator, string memory name, string memory symbol, string memory _desc, bytes memory _image, string[] memory _links, uint256 _supply, address _protocol) ERC20(name, symbol) {
 		protocol = _protocol;
 		creator = _creator;
-		descripiton = _desc;
+		description = _desc;
 		image = _image;
 		links = _links;
 		_mint(msg.sender, _supply);
@@ -39,14 +39,13 @@ contract Token is ERC20 {
 		require(msg.sender == creator);
 
 		if (bytes(_desc).length > 0) {
-			descripiton = _desc;
+			description = _desc;
 		}
 		if (_image.length > 0) {
 			image = _image;
 		}
-		if (_links.length != links.length) {
-			links = _links;
-		}
+
+		links = _links;
 	}
 
 	function tokenURI(
@@ -73,7 +72,7 @@ contract Token is ERC20 {
 						'"name":"', name(), '",',
 						'"symbol":"', symbol(), '",',
 						'"supply":"', LibString.toString(totalSupply() / (10 ** 18)), '",',
-						'"description":"', descripiton, '",',
+						'"description":"', description, '",',
 						'"links":[',linksString,'],',
 						'"image_data":"data:image/webp;base64,', Base64.encode(image), '",',
 						'"background_color":"000000"',

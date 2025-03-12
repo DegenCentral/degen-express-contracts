@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: UNKNOWN
 pragma solidity 0.8.20;
 
+// Third Party
+import { FixedPointMathLib as FPML } from "solady/src/utils/FixedPointMathLib.sol";
+
+
 library LibLST {
 	struct Storage {
 		uint256 staked;
@@ -39,7 +43,7 @@ library LibLST {
 			store().buffered -= ethAmount;
 		} else {
 			uint256 diff = ethAmount - store().buffered;
-			uint256 fillup = BUFFER / 2;
+			uint256 fillup = FPML.min(BUFFER / 2, store().staked);
 			unstake(diff + fillup);
 			store().buffered = fillup;
 		}

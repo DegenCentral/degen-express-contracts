@@ -66,8 +66,9 @@ contract Core is Diamondable {
 		require(
 			bytes(name).length <= 18 &&
 			bytes(symbol).length <= 18 &&
-			bytes(image).length <= 1e7,
-			"invalid name/symbol/image"
+			bytes(image).length <= 1e7 &&
+			bytes(description).length <= 512,
+			"invalid name/symbol/image/desc"
 		);
 
 		require(links.length < 5, "4 links max");
@@ -87,11 +88,14 @@ contract Core is Diamondable {
 			revert("invalid strategy");
 		}
 
+		address pair = LibDex.createPair(dex, tokenAddress);
+
 		LibTokens.store().tokens[tokenAddress] = LibTokens.TokenInfo(
 			creator,
 			strategy,
 			dex,
-			address(0)
+			pair,
+			false
 		);
 		 
 		emit TokenCreated(tokenAddress, creator, strategy, dex, data, price);
@@ -129,21 +133,10 @@ contract Core is Diamondable {
 		}
 	}
 
-	event DexChanged(address token, LibDex.Dex dex);
-	function updateDex(address token, LibDex.Dex dex) external {
-		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
-		require(info.creator == msg.sender, "unauthorized");
-		require(info.pair == address(0), "launched");
-
-		info.dex = dex;
-		emit DexChanged(token, dex);
-	}
-
 	event Bought(address buyer, address token, uint256 ethIn, uint256 tokensOut, uint256 priceNew);
 
 	function buy(address token, uint256 min, uint256 deadline) public payable {
 		Core(address(this))._buy(msg.sender, token, msg.value, min, deadline);
-		revert();
 	}
 	function _buy(address buyer, address token, uint256 ethIn, uint256 min, uint256 deadline) public onlyDiamond {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
@@ -173,7 +166,6 @@ contract Core is Diamondable {
 
 	function sell(address token, uint256 amount, uint256 min, uint256 deadline) public {
 		Core(address(this))._sell(msg.sender, token, amount, min, deadline);
-		revert();
 	}
 	function _sell(address seller, address token, uint256 amount, uint256 min, uint256 deadline) public onlyDiamond {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
@@ -204,6 +196,9 @@ contract Core is Diamondable {
 		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
 		require(info.creator != address(0), "invalid token");
 
+		(uint256 ethReserve,,,) = FakePools(address(this)).fakepool_stats(token);
+		LibLST.removeLiquidity(ethReserve);
+
 		Token(token).unlock();
 		
 		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, info);
@@ -211,9 +206,8 @@ contract Core is Diamondable {
 		Degen(address(this)).attributeXp(info.creator, Degen.XpType.Launch, eth);
 
 		info.pair = pair;
+		info.launched = true;
 		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
-
-		revert();
 	}
 
 }

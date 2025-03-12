@@ -39,6 +39,14 @@ interface ISwapRouter {
 }
 
 contract Shadow is Diamondable {
+	struct Storage {
+		mapping(address => uint256) lpGuardPositions;
+	}
+
+	function store() internal pure returns (Storage storage s) {
+		bytes32 position = keccak256("diamond.shadowlp.storage");
+		assembly { s.slot := position }
+	}
 
 	IRamsesV3Factory constant factory = IRamsesV3Factory(0xcD2d0637c94fe77C2896BbCBB174cefFb08DE6d7);
 	INonfungiblePositionManager constant nfpManager = INonfungiblePositionManager(0x12E66C8F215DdD5d48d150c8f46aD0c6fB0F4406);
@@ -50,7 +58,47 @@ contract Shadow is Diamondable {
 		return factory.getPool(token, nfpManager.WETH9(), spacing);
 	}
 
-	function shadow_addLiquidty(
+	function shadow_createPair(address token) public onlyDiamond returns (address) {
+		address weth = nfpManager.WETH9();
+		
+		(address token0, address token1) = weth < token
+			? (weth, token)
+			: (token, weth);
+
+		int24 tick = token == token0 ? int24(-887272) : int24(887272);
+		uint160 sqrtPrice = TickMath.getSqrtRatioAtTick(tick);
+
+		address pair = factory.createPool(
+			token0,
+			token1,
+			spacing,
+			sqrtPrice
+		);
+
+		Token(token).approve(address(nfpManager), 1 ether);
+
+		(uint256 tokenId,,,) = nfpManager.mint(
+			INonfungiblePositionManager.MintParams({
+				token0: token0,
+				token1: token1,
+				tickSpacing: spacing,
+				tickLower: tick,
+				tickUpper: tick,
+				amount0Desired: token == token0 ? 1 ether : 0,
+				amount1Desired: token == token1 ? 1 ether : 0,
+				amount0Min: 0,
+				amount1Min: 0,
+				recipient: address(this),
+				deadline: block.timestamp
+			})
+		);
+
+		store().lpGuardPositions[token] = tokenId;
+
+		return pair;
+	}
+
+	function shadow_addLiquidity(
 		address token,
 		uint256 ethAmount,
 		uint256 tokenAmount
@@ -64,14 +112,52 @@ contract Shadow is Diamondable {
 			? (ethAmount, tokenAmount)
 			: (tokenAmount, ethAmount);
 
+		uint160 sqrtPrice = calculateSqrtPriceX96(amount0, amount1);
 		address pool = shadow_pairFor(token);
-		if (pool == address(0)) {
-			pool = factory.createPool(
-				token0,
-				token1,
-				spacing,
-				calculateSqrtPriceX96(amount0, amount1)
+
+		uint256 lpGuardPos = store().lpGuardPositions[token];
+		if (lpGuardPos > 0) {
+			(,,,,, uint128 liquidity,,,,) = nfpManager.positions(lpGuardPos);
+			nfpManager.decreaseLiquidity(
+				INonfungiblePositionManager.DecreaseLiquidityParams({
+					tokenId: lpGuardPos,
+					liquidity: liquidity,
+					amount0Min: 0,
+					amount1Min: 0,
+					deadline: block.timestamp
+				})
 			);
+			nfpManager.collect(
+				INonfungiblePositionManager.CollectParams({
+					tokenId: lpGuardPos,
+					recipient: address(this),
+					amount0Max: type(uint128).max,
+					amount1Max: type(uint128).max
+				})
+			);
+			store().lpGuardPositions[token] = 0;
+		}
+		
+		(uint160 currentSqrtPrice,,,,,,) = IRamsesV3Pool(pool).slot0();
+		if (sqrtPrice != currentSqrtPrice) {
+			bool zeroForOne;
+			int256 amountSpecified;
+			if (currentSqrtPrice < sqrtPrice) {
+				zeroForOne = true;
+				amountSpecified = type(int256).max;
+			} else {
+				zeroForOne = false;
+				amountSpecified = -type(int256).max;
+			}
+			IRamsesV3Pool(pool).swap(
+				address(this),
+				zeroForOne,
+				amountSpecified,
+				sqrtPrice,
+				""
+			);
+			(uint160 csp,,,,,,) = IRamsesV3Pool(pool).slot0();
+			if (csp != sqrtPrice) revert();
 		}
 
 		IwETH(weth).deposit{ value: ethAmount }();
@@ -84,8 +170,8 @@ contract Shadow is Diamondable {
 				token0: token0,
 				token1: token1,
 				tickSpacing: spacing,
-				tickLower: (-887272 / spacing) * spacing,
-				tickUpper: (887272 / spacing) * spacing,
+				tickLower: (TickMath.MIN_TICK / spacing) * spacing,
+				tickUpper: (TickMath.MAX_TICK / spacing) * spacing,
 				amount0Desired: amount0,
 				amount1Desired: amount1,
 				amount0Min: 0,
@@ -133,10 +219,10 @@ contract Shadow is Diamondable {
 		address weth = nfpManager.WETH9();
 
 		(address token0,,,int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) = nfpManager.positions(tokenId);
-		(uint160 sqrtPriceX96,,,,,,) = IRamsesV3Pool(shadow_pairFor(token)).slot0();
+		(uint160 sqrtPrice,,,,,,) = IRamsesV3Pool(shadow_pairFor(token)).slot0();
 
 		(uint256 liq0, uint256 liq1) = LiquidityAmounts.getAmountsForLiquidity(
-			sqrtPriceX96,
+			sqrtPrice,
 			TickMath.getSqrtRatioAtTick(tickLower),
 			TickMath.getSqrtRatioAtTick(tickUpper),
 			liquidity
