@@ -108,6 +108,8 @@ contract Core is Diamondable, Ownable, Haltable {
 		eth -= creationEth;
 		LibCore.gatherProceeds(creationEth);
 
+		Token(tokenAddress).lock();
+
 		if (initialBuy > 0) {
 			_buy(creator, tokenAddress, initialBuy, 0, block.timestamp);
 			eth -= initialBuy;
@@ -117,8 +119,6 @@ contract Core is Diamondable, Ownable, Haltable {
 			(bool sent,) = creator.call{ value: eth }(""); // refund dust
 			require(sent);
 		}
-
-		Token(tokenAddress).lock();
 
 		return tokenAddress;
 	}
