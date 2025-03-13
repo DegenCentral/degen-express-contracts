@@ -141,15 +141,8 @@ contract Shadow is Diamondable {
 		
 		(uint160 currentSqrtPrice,,,,,,) = IRamsesV3Pool(pool).slot0();
 		if (sqrtPrice != currentSqrtPrice) {
-			bool zeroForOne;
-			int256 amountSpecified;
-			if (currentSqrtPrice < sqrtPrice) {
-				zeroForOne = true;
-				amountSpecified = type(int256).max;
-			} else {
-				zeroForOne = false;
-				amountSpecified = -type(int256).max;
-			}
+			bool zeroForOne = currentSqrtPrice > sqrtPrice;
+			int256 amountSpecified = 1;
 			IRamsesV3Pool(pool).swap(
 				address(this),
 				zeroForOne,

@@ -219,8 +219,4 @@ contract Core is Diamondable, Ownable, Haltable {
 		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
 	}
 
-	function force_launch(address token) external onlyOwner {
-		Core(address(this)).launch(token);
-	}
-
 }
