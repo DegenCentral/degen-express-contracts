@@ -33,16 +33,15 @@ library LibUsd {
 		ChainlinkOracle storage oracle = store().usdOracle;
 
 		(
-			uint80 roundId,
+			/*uint80 roundId*/,
 			int signedPrice,
 			/*uint startedAt*/,
 			uint timeStamp,
-			uint80 answeredInRound
+			/* uint80 answeredInRound*/
 		) = IChainlinkAggregatorV3(oracle.priceFeed).latestRoundData();
 
 		require(signedPrice > 0, "negative oracle price");
 		require(uint256(timeStamp) >= block.timestamp - oracle.heartBeat, "stale pricefeed");
-		require(answeredInRound >= roundId, "round not complete");
 
 		// usd oracle returns the price in 8 decimals, we want 18
 		return uint256(signedPrice) * (10 ** 10);
