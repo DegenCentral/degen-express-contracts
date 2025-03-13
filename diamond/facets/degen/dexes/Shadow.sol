@@ -135,6 +135,7 @@ contract Shadow is Diamondable {
 					amount1Max: type(uint128).max
 				})
 			);
+			nfpManager.burn(lpGuardPos);
 			store().lpGuardPositions[token] = 0;
 		}
 		
