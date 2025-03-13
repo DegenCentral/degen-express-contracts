@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { LibDiamond } from "../../../libraries/LibDiamond.sol";
+import { LibCore } from "../../../libraries/LibCore.sol";
 import { Diamondable } from "../../../Diamondable.sol";
 import { LibLp } from "../../../libraries/LibLp.sol";
 
@@ -65,8 +66,7 @@ contract Shadow is Diamondable {
 			? (weth, token)
 			: (token, weth);
 
-		int24 tick = token == token0 ? int24(-887272) : int24(887272);
-		uint160 sqrtPrice = TickMath.getSqrtRatioAtTick(tick);
+		uint160 sqrtPrice = token == token0 ? (TickMath.MIN_SQRT_RATIO + 1) : (TickMath.MAX_SQRT_RATIO - 1);
 
 		address pair = factory.createPool(
 			token0,
@@ -82,8 +82,8 @@ contract Shadow is Diamondable {
 				token0: token0,
 				token1: token1,
 				tickSpacing: spacing,
-				tickLower: tick,
-				tickUpper: tick,
+				tickLower: ((token == token0 ? TickMath.MIN_TICK : TickMath.MAX_TICK - spacing) / spacing) * spacing,
+				tickUpper: ((token == token0 ? TickMath.MIN_TICK + spacing : TickMath.MAX_TICK) / spacing) * spacing,
 				amount0Desired: token == token0 ? 1 ether : 0,
 				amount1Desired: token == token1 ? 1 ether : 0,
 				amount0Min: 0,
@@ -208,6 +208,7 @@ contract Shadow is Diamondable {
 			sqrtPriceLimitX96: 0
 		}));
 		IwETH(weth).withdraw(wethOut);
+		LibCore.store().proceeds -= amountWeth - wethOut; // take swap fee from proceeds
 
 		LibLp.store().shadow_cl_positions[token] = tokenId;
 	}

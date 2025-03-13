@@ -10,7 +10,8 @@ import { LibString } from "solady/src/utils/LibString.sol";
 contract Token is ERC20 {
 
 	address internal protocol;
-	bool internal locked = true;
+	bool internal locked = false;
+	bool internal launched = false;
 
 	address internal creator;
 	string internal description;
@@ -26,9 +27,15 @@ contract Token is ERC20 {
 		_mint(msg.sender, _supply);
 	}
 
-	function unlock() external {
-		require(msg.sender == protocol && locked == true);
+	function lock() external {
+		require(msg.sender == protocol && launched == false);
+		locked = true;
+	}
+
+	function launch() external {
+		require(msg.sender == protocol && launched == false);
 		locked = false;
+		launched = true;
 	}
 
 	function updateMetadata(

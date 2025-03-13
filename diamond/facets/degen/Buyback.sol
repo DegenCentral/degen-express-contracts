@@ -28,9 +28,9 @@ contract Buyback is Ownable {
 		emit BoughtBack(token, amount);
 	}
 
-	event BoughtBackSponsored(address token, uint256 amount, uint256 amountOutMin);
+	event BoughtBackSponsored(address token, uint256 amount);
 
-	function sponsoredBuyback(address token) external payable onlyOwner {
+	function sponsoredBuyback(address token, uint256 amountOutMin) external payable onlyOwner {
 		Core(address(this))._buy(address(0x000000000000000000000000000000000000dEaD), token, msg.value, amountOutMin, block.timestamp);
 		emit BoughtBackSponsored(token, msg.value);
 	}

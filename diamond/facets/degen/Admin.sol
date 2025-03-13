@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
+import { LibDiamond } from "../../libraries/LibDiamond.sol";
 import { LibCore } from "../../libraries/LibCore.sol";
 import { LibFakePools } from "../../libraries/LibFakePools.sol";
 import { LibTokens } from "../../libraries/LibTokens.sol";
@@ -12,16 +13,15 @@ import { Ownable } from "../../Ownable.sol";
 import { Token } from "../../../Token.sol";
 
 
-interface IwETH {
-	function deposit() external payable;
-	function withdraw(uint256 value) external;
-}
-
 contract Admin is Ownable {
 
 	function reap() external onlyOwner {
 		uint256 proceeds = LibCore.store().proceeds;
-		LibCore.store().proceeds = 0;
+
+		require(proceeds > 10 ether);
+		proceeds = proceeds - 10 ether; // keep a min for various fees
+		LibCore.store().proceeds = 10 ether;
+
 		(bool sent,) = LibCore.store().proceedsReceiver.call{ value: proceeds }("");
 		require(sent);
 	}
@@ -33,6 +33,10 @@ contract Admin is Ownable {
 	}
 
 	// SETTERS
+
+	function setHalted(bool halted) external onlyOwner {
+		LibDiamond.diamondStorage().halted = halted;
+	}
 
 	function setProceedsReceiver(address receiver) external onlyOwner {
 		LibCore.store().proceedsReceiver = receiver;

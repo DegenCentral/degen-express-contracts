@@ -3,16 +3,17 @@ pragma solidity 0.8.20;
 
 // Contracts/Libraries/Modifiers
 import { LibTokens } from "../../libraries/LibTokens.sol";
+import { Haltable } from "../../Haltable.sol";
 
 // Interfaces
 import { Token } from "../../../Token.sol";
 
 
-contract TokenUtilities {
+contract TokenUtilities is Haltable {
 
 	address constant dEaD = address(0x000000000000000000000000000000000000dEaD);
 
-	function token_util_burn(address token, uint256 amount) external {
+	function token_util_burn(address token, uint256 amount) external checkHalted {
 		require(LibTokens.store().tokens[token].creator != address(0), "invalid token");
 
 		Token(token).transferFrom(msg.sender, address(this), amount);

@@ -44,6 +44,8 @@ library LibDiamond {
 		address contractOwner;
 		// owner of the diamond itself
 		address diamondAddress;
+		// if true the diamond has been halted
+		bool halted;
 	}
 
 	function diamondStorage() internal pure returns (DiamondStorage storage ds) {

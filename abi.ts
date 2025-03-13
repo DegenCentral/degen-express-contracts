@@ -4,11 +4,6 @@
 
 export const adminAbi = [
   {
-    type: 'error',
-    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
-    name: 'Unauthorized',
-  },
-  {
     type: 'function',
     inputs: [],
     name: 'donate',
@@ -40,6 +35,13 @@ export const adminAbi = [
     type: 'function',
     inputs: [{ name: 'threshold', internalType: 'uint256', type: 'uint256' }],
     name: 'setFakePoolMCapThreshold',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'halted', internalType: 'bool', type: 'bool' }],
+    name: 'setHalted',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -187,11 +189,6 @@ export const brokerAbi = [
 
 export const buybackAbi = [
   {
-    type: 'error',
-    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
-    name: 'Unauthorized',
-  },
-  {
     type: 'event',
     anonymous: false,
     inputs: [
@@ -234,6 +231,7 @@ export const buybackAbi = [
     inputs: [
       { name: 'token', internalType: 'address', type: 'address' },
       { name: 'amount', internalType: 'uint256', type: 'uint256' },
+      { name: 'amountOutMin', internalType: 'uint256', type: 'uint256' },
     ],
     name: 'buyback',
     outputs: [],
@@ -248,7 +246,10 @@ export const buybackAbi = [
   },
   {
     type: 'function',
-    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    inputs: [
+      { name: 'token', internalType: 'address', type: 'address' },
+      { name: 'amountOutMin', internalType: 'uint256', type: 'uint256' },
+    ],
     name: 'sponsoredBuyback',
     outputs: [],
     stateMutability: 'payable',
@@ -260,11 +261,6 @@ export const buybackAbi = [
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const coreAbi = [
-  {
-    type: 'error',
-    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
-    name: 'Unauthorized',
-  },
   {
     type: 'event',
     anonymous: false,
@@ -301,25 +297,6 @@ export const coreAbi = [
       },
     ],
     name: 'Bought',
-  },
-  {
-    type: 'event',
-    anonymous: false,
-    inputs: [
-      {
-        name: 'token',
-        internalType: 'address',
-        type: 'address',
-        indexed: false,
-      },
-      {
-        name: 'dex',
-        internalType: 'enum LibDex.Dex',
-        type: 'uint8',
-        indexed: false,
-      },
-    ],
-    name: 'DexChanged',
   },
   {
     type: 'event',
@@ -517,6 +494,13 @@ export const coreAbi = [
   {
     type: 'function',
     inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    name: 'force_launch',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
     name: 'launch',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -562,20 +546,11 @@ export const coreAbi = [
           },
           { name: 'dex', internalType: 'enum LibDex.Dex', type: 'uint8' },
           { name: 'pair', internalType: 'address', type: 'address' },
+          { name: 'launched', internalType: 'bool', type: 'bool' },
         ],
       },
     ],
     stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'token', internalType: 'address', type: 'address' },
-      { name: 'dex', internalType: 'enum LibDex.Dex', type: 'uint8' },
-    ],
-    name: 'updateDex',
-    outputs: [],
-    stateMutability: 'nonpayable',
   },
 ] as const
 
@@ -584,11 +559,6 @@ export const coreAbi = [
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const degenAbi = [
-  {
-    type: 'error',
-    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
-    name: 'Unauthorized',
-  },
   {
     type: 'event',
     anonymous: false,
@@ -759,11 +729,6 @@ export const diamondConfig = {
 
 export const fakePoolsAbi = [
   {
-    type: 'error',
-    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
-    name: 'Unauthorized',
-  },
-  {
     type: 'function',
     inputs: [
       { name: 'token', internalType: 'address', type: 'address' },
@@ -863,7 +828,7 @@ export const iChainlinkAggregatorV3Abi = [
  *
  */
 export const iChainlinkAggregatorV3Address = {
-  146: '0x38eBC3960B4a5C21f98a5D67a84292B195C754a1',
+  146: '0xc76dFb89fF298145b417d221B2c747d84952e01d',
 } as const
 
 /**
@@ -879,11 +844,6 @@ export const iChainlinkAggregatorV3Config = {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const lpTreasuryAbi = [
-  {
-    type: 'error',
-    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
-    name: 'Unauthorized',
-  },
   {
     type: 'event',
     anonymous: false,

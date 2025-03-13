@@ -9,6 +9,8 @@ import { LibTokens } from "../../libraries/LibTokens.sol";
 import { LibDex } from "../../libraries/LibDex.sol";
 import { LibLST } from "../../libraries/LibLST.sol";
 import { Diamondable } from "../../Diamondable.sol";
+import { Ownable } from "../../Ownable.sol";
+import { Haltable } from "../../Haltable.sol";
 
 // Facets
 import { FakePools } from "./LaunchStrategies/FakePools.sol";
@@ -19,7 +21,7 @@ import { Degen } from "./Degen.sol";
 import { Token } from "../../../Token.sol";
 
 
-contract Core is Diamondable {
+contract Core is Diamondable, Ownable, Haltable {
 	event TokenCreated(
 		address token,
 		address creator,
@@ -62,7 +64,7 @@ contract Core is Diamondable {
 		LibDex.Dex dex,
 		uint256 initialBuy,
 		uint256 eth
-	) public onlyDiamond returns (address) {
+	) public onlyDiamond checkHalted returns (address) {
 		require(
 			bytes(name).length <= 18 &&
 			bytes(symbol).length <= 18 &&
@@ -116,6 +118,8 @@ contract Core is Diamondable {
 			require(sent);
 		}
 
+		Token(tokenAddress).lock();
+
 		return tokenAddress;
 	}
 
@@ -138,7 +142,7 @@ contract Core is Diamondable {
 	function buy(address token, uint256 min, uint256 deadline) public payable {
 		Core(address(this))._buy(msg.sender, token, msg.value, min, deadline);
 	}
-	function _buy(address buyer, address token, uint256 ethIn, uint256 min, uint256 deadline) public onlyDiamond {
+	function _buy(address buyer, address token, uint256 ethIn, uint256 min, uint256 deadline) public onlyDiamond checkHalted {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
 		require(deadline >= block.timestamp, "deadline passed");
 
@@ -167,7 +171,7 @@ contract Core is Diamondable {
 	function sell(address token, uint256 amount, uint256 min, uint256 deadline) public {
 		Core(address(this))._sell(msg.sender, token, amount, min, deadline);
 	}
-	function _sell(address seller, address token, uint256 amount, uint256 min, uint256 deadline) public onlyDiamond {
+	function _sell(address seller, address token, uint256 amount, uint256 min, uint256 deadline) public onlyDiamond checkHalted {
 		LibTokens.LaunchStrategy strategy = LibTokens.store().tokens[token].strategy;
 		require(deadline >= block.timestamp, "deadline passed");
 
@@ -192,14 +196,19 @@ contract Core is Diamondable {
 		emit Sold(seller, token, ethOut, amount, price);
 	}
 
-	function launch(address token) public onlyDiamond {
+	function launch(address token) public onlyDiamond checkHalted {
 		LibTokens.TokenInfo storage info = LibTokens.store().tokens[token];
 		require(info.creator != address(0), "invalid token");
 
-		(uint256 ethReserve,,,) = FakePools(address(this)).fakepool_stats(token);
+		uint256 ethReserve;
+		if (info.strategy == LibTokens.LaunchStrategy.FakeLiquidity) {
+			(ethReserve,,,) = FakePools(address(this)).fakepool_stats(token);
+		} else {
+			revert("invalid strategy");
+		}
 		LibLST.removeLiquidity(ethReserve);
 
-		Token(token).unlock();
+		Token(token).launch();
 		
 		(address pair, uint256 eth,) = Launcher(address(this)).launch(token, info);
 
@@ -208,6 +217,10 @@ contract Core is Diamondable {
 		info.pair = pair;
 		info.launched = true;
 		emit TokenLaunched(token, info.creator, info.strategy, info.dex, pair);
+	}
+
+	function force_launch(address token) external onlyOwner {
+		Core(address(this)).launch(token);
 	}
 
 }

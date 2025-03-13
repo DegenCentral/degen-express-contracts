@@ -9,6 +9,7 @@ import { LibUsd } from "../../libraries/LibUsd.sol";
 import { LibDex } from "../../libraries/LibDex.sol";
 import { LibLp } from "../../libraries/LibLp.sol";
 import { Diamondable } from "../../Diamondable.sol";
+import { Haltable } from "../../Haltable.sol";
 
 // Third Party
 import { EnumerableSetLib as ESL } from "solady/src/utils/EnumerableSetLib.sol";
@@ -23,7 +24,7 @@ interface EqualPair {
 	function claimFees() external returns (uint claimed0, uint claimed1);
 }
 
-contract LpTreasury is Diamondable {
+contract LpTreasury is Diamondable, Haltable {
 
 	struct ClaimBalances {
 		ESL.AddressSet assets;
@@ -125,7 +126,7 @@ contract LpTreasury is Diamondable {
 		}
 	}
 
-	function claimFees(address token) public {
+	function claimFees(address token) public checkHalted {
 		LibTokens.TokenInfo storage tokenInfo = LibTokens.store().tokens[token];
 		require(tokenInfo.creator != address(0), "Token not found");
 		require(msg.sender == tokenInfo.creator || msg.sender == LibDiamond.contractOwner());
