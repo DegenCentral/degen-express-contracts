@@ -43,7 +43,7 @@ library LibLST {
 			store().buffered -= ethAmount;
 		} else {
 			uint256 diff = ethAmount - store().buffered;
-			uint256 fillup = FPML.min(BUFFER / 2, store().staked);
+			uint256 fillup = FPML.min(BUFFER / 2, store().staked - diff);
 			unstake(diff + fillup);
 			store().buffered = fillup;
 		}
