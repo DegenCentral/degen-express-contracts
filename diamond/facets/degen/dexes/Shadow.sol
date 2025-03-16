@@ -12,6 +12,7 @@ import { INonfungiblePositionManager } from "ramses-v3/contracts/CL/periphery/in
 import { LiquidityAmounts } from "ramses-v3/contracts/CL/periphery/libraries/LiquidityAmounts.sol";
 import { IRamsesV3Factory } from "ramses-v3/contracts/CL/core/interfaces/IRamsesV3Factory.sol";
 import { IRamsesV3Pool } from "ramses-v3/contracts/CL/core/interfaces/IRamsesV3Pool.sol";
+import { FixedPoint96 } from "ramses-v3/contracts/CL/core/libraries/FixedPoint96.sol";
 import { TickMath } from "ramses-v3/contracts/CL/core/libraries/TickMath.sol";
 import { FixedPointMathLib as FPML } from "solady/src/utils/FixedPointMathLib.sol";
 
@@ -61,12 +62,13 @@ contract Shadow is Diamondable {
 
 	function shadow_createPair(address token) public onlyDiamond returns (address) {
 		address weth = nfpManager.WETH9();
-		
+
 		(address token0, address token1) = weth < token
 			? (weth, token)
 			: (token, weth);
 
-		uint160 sqrtPrice = token == token0 ? (TickMath.MIN_SQRT_RATIO + 1) : (TickMath.MAX_SQRT_RATIO - 1);
+		uint160 sqrtPrice = TickMath.getSqrtRatioAtTick(roundToSpacing(token == token0 ? TickMath.MIN_TICK : TickMath.MAX_TICK));
+		(int24 tickLower, int24 tickUpper) = (roundToSpacing(TickMath.MIN_TICK), roundToSpacing(TickMath.MAX_TICK));
 
 		address pair = factory.createPool(
 			token0,
@@ -75,17 +77,17 @@ contract Shadow is Diamondable {
 			sqrtPrice
 		);
 
-		Token(token).approve(address(nfpManager), 1 ether);
+		Token(token).approve(address(nfpManager), 100 ether);
 
 		(uint256 tokenId,,,) = nfpManager.mint(
 			INonfungiblePositionManager.MintParams({
 				token0: token0,
 				token1: token1,
 				tickSpacing: spacing,
-				tickLower: ((token == token0 ? TickMath.MIN_TICK : TickMath.MAX_TICK - spacing) / spacing) * spacing,
-				tickUpper: ((token == token0 ? TickMath.MIN_TICK + spacing : TickMath.MAX_TICK) / spacing) * spacing,
-				amount0Desired: token == token0 ? 1 ether : 0,
-				amount1Desired: token == token1 ? 1 ether : 0,
+				tickLower: tickLower,
+				tickUpper: tickUpper,
+				amount0Desired: token == token0 ? 100 ether : 0,
+				amount1Desired: token == token1 ? 100 ether : 0,
 				amount0Min: 0,
 				amount1Min: 0,
 				recipient: address(this),
@@ -127,7 +129,7 @@ contract Shadow is Diamondable {
 					deadline: block.timestamp
 				})
 			);
-			nfpManager.collect(
+			(uint256 a0, uint256 a1) = nfpManager.collect(
 				INonfungiblePositionManager.CollectParams({
 					tokenId: lpGuardPos,
 					recipient: address(this),
@@ -135,6 +137,7 @@ contract Shadow is Diamondable {
 					amount1Max: type(uint128).max
 				})
 			);
+			Token(token).transfer(0x000000000000000000000000000000000000dEaD, token < weth ? a0 : a1);
 			nfpManager.burn(lpGuardPos);
 			store().lpGuardPositions[token] = 0;
 		}
@@ -164,8 +167,8 @@ contract Shadow is Diamondable {
 				token0: token0,
 				token1: token1,
 				tickSpacing: spacing,
-				tickLower: (TickMath.MIN_TICK / spacing) * spacing,
-				tickUpper: (TickMath.MAX_TICK / spacing) * spacing,
+				tickLower: roundToSpacing(TickMath.MIN_TICK),
+				tickUpper: roundToSpacing(TickMath.MAX_TICK),
 				amount0Desired: amount0,
 				amount1Desired: amount1,
 				amount0Min: 0,
@@ -208,10 +211,10 @@ contract Shadow is Diamondable {
 	}
 
 	function shadow_decreaseLiquidity(address token, uint256 ethAmount) public onlyDiamond {
+		address weth = nfpManager.WETH9();
+
 		uint256 tokenId = LibLp.store().shadow_cl_positions[token];
 		require(tokenId > 0, "no position");
-
-		address weth = nfpManager.WETH9();
 
 		(address token0,,,int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) = nfpManager.positions(tokenId);
 		(uint160 sqrtPrice,,,,,,) = IRamsesV3Pool(shadow_pairFor(token)).slot0();
@@ -250,11 +253,12 @@ contract Shadow is Diamondable {
 		IwETH(weth).withdraw(wethAfter);
 	}
 
-
-	uint256 internal constant Q96 = 0x1000000000000000000000000;
+	function roundToSpacing(int24 tick) internal pure returns (int24) {
+		return (tick / spacing) * spacing;
+	}
 
 	function calculateSqrtPriceX96(uint256 amount0, uint256 amount1) internal pure returns (uint160) {
-		return uint160(FPML.mulDiv(FPML.sqrt(amount1), Q96, FPML.sqrt(amount0)));
+		return uint160(FPML.mulDiv(FPML.sqrt(amount1), FixedPoint96.Q96, FPML.sqrt(amount0)));
 	}
 
 	// add bridged shadow positons

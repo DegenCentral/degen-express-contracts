@@ -494,13 +494,6 @@ export const coreAbi = [
   {
     type: 'function',
     inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
-    name: 'force_launch',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
     name: 'launch',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -995,9 +988,32 @@ export const tokenAbi = [
   {
     type: 'function',
     inputs: [],
+    name: 'launch',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'lock',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'name',
     outputs: [{ name: '', internalType: 'string', type: 'string' }],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_blacklist', internalType: 'address[]', type: 'address[]' },
+    ],
+    name: 'setBlacklist',
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -1039,13 +1055,6 @@ export const tokenAbi = [
     ],
     name: 'transferFrom',
     outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'unlock',
-    outputs: [],
     stateMutability: 'nonpayable',
   },
   {

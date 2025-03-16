@@ -80,7 +80,7 @@ contract Core is Diamondable, Ownable, Haltable {
 
 		LibCore.Storage storage d = LibCore.store();
 
-		Token token = new Token(creator, name, symbol, description, image, links, d.tokenSupply, address(this));
+		Token token = new Token(creator, name, symbol, description, image, links, d.tokenSupply + 100 ether, address(this)); // mint 100 tokens for lp guard
 		address tokenAddress = address(token);
 
 		uint256 price;
@@ -108,7 +108,10 @@ contract Core is Diamondable, Ownable, Haltable {
 		eth -= creationEth;
 		LibCore.gatherProceeds(creationEth);
 
-		Token(tokenAddress).lock();
+		address[] memory blacklist = new address[](1);
+		blacklist[0] = pair;
+		token.setBlacklist(blacklist);
+		token.lock();
 
 		if (initialBuy > 0) {
 			_buy(creator, tokenAddress, initialBuy, 0, block.timestamp);

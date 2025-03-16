@@ -12,6 +12,7 @@ contract Token is ERC20 {
 	address internal protocol;
 	bool internal locked = false;
 	bool internal launched = false;
+	address[] internal blacklist;
 
 	address internal creator;
 	string internal description;
@@ -27,6 +28,11 @@ contract Token is ERC20 {
 		_mint(msg.sender, _supply);
 	}
 
+	function setBlacklist(address[] calldata _blacklist) external {
+		require(msg.sender == protocol && launched == false);
+		blacklist = _blacklist;
+	}
+
 	function lock() external {
 		require(msg.sender == protocol && launched == false);
 		locked = true;
@@ -36,6 +42,7 @@ contract Token is ERC20 {
 		require(msg.sender == protocol && launched == false);
 		locked = false;
 		launched = true;
+		blacklist = new address[](0);
 	}
 
 	function updateMetadata(
@@ -92,6 +99,11 @@ contract Token is ERC20 {
 
 	function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
 		if (locked) {
+			for (uint256 i = 0; i < blacklist.length; i++) {
+				if (from == blacklist[i] || to == blacklist[i]) {
+					revert("blacklisted");
+				}
+			}
 			require(from == protocol || to == protocol, "transfer not allowed before launch");
 		}
 	}
